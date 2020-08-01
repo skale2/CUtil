@@ -1,12 +1,21 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#pragma once
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 
+/* ------------- macro helpers ------------- */
+
+#define DEBUG_MACRO_STRINGIFY(macro) \
+	(#macro)
+
+#define DEBUG_MACRO_PRINT(macro) \
+	(printf("%s\n", DEBUG_MACRO_STRINGIFY(macro)))
+
 /* ------------- print helpers ------------ */
 
+#define print(s, ...)           (printf(s, ##__VA_ARGS__));
+#define println(s, ...)         ({ printf((s), ##__VA_ARGS__); printf("\n"); })
 #define print_int(v)            (printf("%d", (v)))
 #define println_int(v)          (printf("%d\n", (v)))
 #define print_uint(v)           (printf("%u", (v)))
@@ -17,8 +26,8 @@
 #define println_float(v)        (printf("%f\n", (v)))
 #define print_float_scinot(v)   (printf("%e", (v)))
 #define println_float_scinot(v) (printf("%e\n", (v)))
-#define print_long(v)           (printf("%lld", (v)))
-#define println_long(v)         (printf("%lld\n", (v)))
+#define print_long(v)           (printf("%ld", (v)))
+#define println_long(v)         (printf("%ld\n", (v)))
 #define print_ulong(v)          (printf("%llu", (v)))
 #define println_ulong(v)        (printf("%llu\n", (v)))
 #define print_double(v)         (printf("%Lf", (v)))
@@ -36,10 +45,7 @@
 #define println_str(v)          (printf("%s\n", (v)))
 #define print_nothing(v)        (printf("%n", (v)))
 #define println_nothing(v)      (printf("%n\n", (v)))
-
-#ifdef __GNUC__
 #define print_member(v, m)      (printf("%p", (v)[offsetof(typeof((v)), m)]))
-#endif
 
 /* ------------ output piping ------------- */
 
@@ -57,20 +63,34 @@
 
 #define SHOULD_MEMORY_DEBUG false
 
-#define debug_mem_dump_int(start, nitems)    (debug_mem_dump((start), (nitems), sizeof(int), "%d"))
-#define debug_mem_dump_long(start, nitems)   (debug_mem_dump((start), (nitems), sizeof(long), "%ld"))
-#define debug_mem_dump_uint(start, nitems)   (debug_mem_dump((start), (nitems), sizeof(unsigned int), "%i"))
-#define debug_mem_dump_ulong(start, nitems)  (debug_mem_dump((start), (nitems), sizeof(unsigned long), "%lu"))
-#define debug_mem_dump_size_t(start, nitems) (debug_mem_dump((start), (nitems), sizeof(size_t), "%zu"))
-#define debug_mem_dump_float(start, nitems)  (debug_mem_dump((start), (nitems), sizeof(float), "%f"))
-#define debug_mem_dump_double(start, nitems) (debug_mem_dump((start), (nitems), sizeof(double), "%lf"))
-#define debug_mem_dump_ptr(start, nitems)    (debug_mem_dump((start), (nitems), sizeof(void *), "%p"))
-#define debug_mem_dump_char(start, nitems)   (debug_mem_dump((start), (nitems), sizeof(char), "%c"))
-#define debug_mem_dump_str(start, nitems)    (debug_mem_dump((start), (nitems), sizeof(char *), "%s"))
+#define debug_mem_dump_int(start, nitems)           (debug_mem_dump((start), (nitems), int, "%d"))
+#define debug_mem_dump_long(start, nitems)          (debug_mem_dump((start), (nitems), long, "%ld"))
+#define debug_mem_dump_uint(start, nitems)          (debug_mem_dump((start), (nitems), unsigned int, "%i"))
+#define debug_mem_dump_ulong(start, nitems)         (debug_mem_dump((start), (nitems), unsigned long, "%lu"))
+#define debug_mem_dump_size(start, nitems)          (debug_mem_dump((start), (nitems), size_t, "%zu"))
+#define debug_mem_dump_float(start, nitems)         (debug_mem_dump((start), (nitems), float, "%f"))
+#define debug_mem_dump_double(start, nitems)        (debug_mem_dump((start), (nitems), double, "%lf"))
+#define debug_mem_dump_ptr(start, nitems)           (debug_mem_dump((start), (nitems), void *, "%p"))
+#define debug_mem_dump_ptr_f(start, nitems, format) (debug_mem_dump((start), (nitems), void *, format))
+#define debug_mem_dump_char(start, nitems)          (debug_mem_dump((start), (nitems), char, "%c"))
+#define debug_mem_dump_str(start, nitems)           (debug_mem_dump((start), (nitems), char *, "%s"))
 
-void  debug_mem_dump         (void *start, size_t nitems, size_t item_size, char *fmt_spec);
+#define debug_mem_dump(start, nitems, item_t, fmt_spec)                        \
+	({                                                                         \
+		printf("\nAddress        | Value"                                      \
+			   "\n---------------+---------------------------------------\n"); \
+                                                                               \
+		for (uint8_t *ptr = (uint8_t *)start;                                  \
+			 ptr < (uint8_t *)start + nitems * sizeof(item_t);                 \
+			 ptr += sizeof(item_t))                                            \
+		{                                                                      \
+			printf("%p | ", ptr);                                              \
+			printf(fmt_spec, *(item_t *)ptr);                                  \
+			printf("\n");                                                      \
+		}                                                                      \
+	})
 
-void  debug_mem_setup        (void);
+void debug_mem_setup(void);
 void  debug_mem_reset        (void);
 void *debug_mem_malloc       (size_t size, char *file, size_t line);
 void *debug_mem_calloc       (size_t nitems, size_t size, char *file, size_t line);
@@ -83,6 +103,4 @@ void  debug_mem_print        (void);
 #define calloc(nitems, size) (debug_mem_calloc((nitems), (size), __FILE__, __LINE__))
 #define realloc(ref, size)   (debug_mem_realloc((ref), (size), __FILE__, __LINE__))
 #define free(ref)            (debug_mem_free((ref), __FILE__, __LINE__))
-#endif
-
 #endif

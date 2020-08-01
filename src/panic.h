@@ -1,5 +1,4 @@
-#ifndef PANIC_H
-#define PANIC_H
+#pragma once
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +21,4 @@ typedef struct
 	char *reason;
 } panicker;
 
-void _panic_(char *fsource, size_t line, char *format, ...);
-
-#endif
+void _panic_(char *fsource, size_t line, char *format, ...) __attribute__((noreturn));

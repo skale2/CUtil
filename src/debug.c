@@ -183,18 +183,3 @@ void debug_mem_print()
 
 	printf("---------------------------------------------------------\n");
 }
-
-void debug_mem_dump(void *start, size_t nitems, size_t item_size, char *fmt_spec)
-{
-	printf("\nAddress        | Value"
-		   "\n---------------+---------------------------------------\n");
-
-	for (uint8_t *ptr = start;
-		 ptr < (uint8_t *)(start + nitems * item_size);
-		 ptr += item_size)
-	{
-		printf("%p | ", ptr);
-		printf(fmt_spec, *ptr);
-		printf("\n");
-	}
-}
