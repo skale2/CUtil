@@ -62,6 +62,10 @@ void signal_handler(int signo)
         printf("\tos fault: process terminated\n");
         testing_abort_running_test(TEST_RESULT_OS_EXCEPTION);
 
+    case SIGBUS:
+        printf("\tos fault: access of unmapped address\n");
+        testing_abort_running_test(TEST_RESULT_OS_EXCEPTION);
+
     default:
         break;
     }
@@ -83,6 +87,9 @@ void register_signal_handler()
 
     if (signal(SIGTERM, signal_handler) == SIG_ERR)
         printf("testing >> warning: os process terminating handling not supported");
+
+    if (signal(SIGTERM, signal_handler) == SIG_ERR)
+        printf("testing >> warning: os unmapped address access handling not supported");
 }
 
 test_result_t testing_run(test_t *test)

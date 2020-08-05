@@ -92,7 +92,7 @@ void *_array_concat_(const void *_first_, const void *_second_)
     const uint8_t *second = (uint8_t *)_second_;
 
     if (header(first)->item_size != header(second)->item_size)
-        panic("can't concatenate arrays %p and %p with items of different sizes", first, second);
+        panic("Can't concatenate arrays with different sized items");
 
     uint8_t *new_arr = _array_new_(
         (array_config_t){
@@ -273,7 +273,7 @@ bool _array_equal_(const void *_first_, const void *_second_)
     uint8_t *second = (uint8_t *)_second_;
 
     if (header(first)->item_size != header(second)->item_size)
-        panic("can't compare arrays %p and %p with items of different sizes", first, second);
+        panic("Can't compare arrays with different sized items");
     else if (header(first)->size != header(second)->size)
         return false;
 
@@ -767,7 +767,7 @@ void _arraylist_add_all_(struct arraylist *list, size_t nitems, void *_items_)
 struct arraylist *_arraylist_concat_(struct arraylist *first, struct arraylist *second)
 {
     if (first->item_size != second->item_size)
-        panic("can't concatenate two lists with different sized items");
+        panic("Can't concatenate two lists with different sized items");
 
     struct arraylist *new_list = _arraylist_new_(
         (arraylist_config_t){
@@ -906,7 +906,7 @@ void *_arraylist_reduce_(struct arraylist *list, reduce_fn_t fn)
 bool _arraylist_equal_(struct arraylist *list1, struct arraylist *list2, eq_config_t config)
 {
     if (list1->item_size != list2->item_size)
-        panic("can't compare two lists with different sized items");
+        panic("Can't compare two lists with different sized items");
 
     if (list1->size != list2->size)
         return false;
@@ -1029,9 +1029,9 @@ void _arraylist_ref_free_(struct arraylist_ref *ref)
 
 struct linkedlist_node
 {
-    void *item;
-    struct linkedlist_node *prev;
     struct linkedlist_node *next;
+    struct linkedlist_node *prev;
+    uint8_t item[];
 };
 
 struct linkedlist
@@ -1042,6 +1042,7 @@ struct linkedlist
 #if linkedlist_ALLOW_EQ_FN_OVERLOAD
     equal_fn_t eq_fn;
 #endif
+    size_t item_size;
     size_t size;
     struct linkedlist_node *first;
     struct linkedlist_node *last;
@@ -1052,83 +1053,76 @@ struct linkedlist_ref
 #if POLYMORPHIC_DS
     ds_type_t type;
 #endif
-    linkedlist_t *list;
+    struct linkedlist *list;
     size_t pos;
     struct linkedlist_node *node;
 };
 
-bool linkedlist_items_equal(linkedlist_t *list, void *item1, void *item2)
+bool _linkedlist_items_equal_(struct linkedlist *list, void *item1, void *item2)
 {
 #if linkedlist_ALLOW_EQ_FN_OVERLOAD
-    return list->eq_fn != NULL ? list->eq_fn(item1, item2) : item1 == item2;
+    return list->eq_fn != NULL
+               ? list->eq_fn(item1, item2)
+               : memcmp(item1, item2, list->item_size) == 0;
 #else
-    return item1 == item2;
+    return memcmp(item1, item2, list->item_size) == 0;
 #endif
 }
 
-linkedlist_t *_linkedlist_new_(linkedlist_config_t config)
+struct linkedlist *_linkedlist_new_(linkedlist_config_t config)
 {
     return $new(
-        linkedlist_t,
+        struct linkedlist,
 #if POLYMORPHIC_DS
         .type = DS_TYPE_LINKEDLIST_REF,
 #endif
 #if linkedlist_ALLOW_EQ_FN_OVERLOAD
         .eq_fn = config.equal_fn,
 #endif
+        .item_size = config.item_size,
         .size = 0,
         .first = NULL,
         .last = NULL);
 }
 
-#if linkedlist_ALLOW_EQ_FN_OVERLOAD
-equal_fn_t linkedlist_get_eq_fn(linkedlist_t *list)
+linkedlist_config_t _linkedlist_get_config_(struct linkedlist *list)
 {
-    return list->eq_fn;
-}
-#endif // linkedlist_ALLOW_EQ_FN_OVERLOAD
-
-size_t linkedlist_check_pos(linkedlist_t *list, int pos)
-{
-    if (pos >= (int)list->size || pos < (int)(-list->size))
-        panic("Position %d out of bounds for list of size %d", pos, list->size);
-    if (pos < 0)
-        pos = list->size + pos;
-
-    return pos;
+    return (linkedlist_config_t){
+        .item_size = list->item_size,
+        .equal_fn = list->eq_fn};
 }
 
-bool linkedlist_is_empty(linkedlist_t *list)
+bool _linkedlist_is_empty_(struct linkedlist *list)
 {
     return list->size == 0;
 }
 
-bool linkedlist_contains(linkedlist_t *list, void *item)
+bool _linkedlist_contains_(struct linkedlist *list, void *item)
 {
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
     {
-        if (linkedlist_items_equal(list, node->item, item))
+        if (_linkedlist_items_equal_(list, node->item, item))
             return true;
     }
 
     return false;
 }
 
-size_t linkedlist_size(linkedlist_t *list)
+size_t _linkedlist_size_(struct linkedlist *list)
 {
     return list->size;
 }
 
-void *linkedlist_get_at(linkedlist_t *list, int pos)
+void *_linkedlist_at_(struct linkedlist *list, int pos)
 {
-    pos = linkedlist_check_pos(list, pos);
+    pos = collection_ordered_pos(pos, list->size);
     struct linkedlist_node *node = list->first;
     for (int i = 0; i < pos; node = node->next, i++)
         ;
     return node->item;
 }
 
-void *linkedlist_get_first(linkedlist_t *list)
+void *_linkedlist_get_first_(struct linkedlist *list)
 {
     if (list->size == 0)
         panic("Cannot access first element of empty list");
@@ -1136,7 +1130,7 @@ void *linkedlist_get_first(linkedlist_t *list)
     return list->first->item;
 }
 
-void *linkedlist_get_last(linkedlist_t *list)
+void *_linkedlist_get_last_(struct linkedlist *list)
 {
     if (list->size == 0)
         panic("Cannot access last element of empty list");
@@ -1144,28 +1138,20 @@ void *linkedlist_get_last(linkedlist_t *list)
     return list->last->item;
 }
 
-void linkedlist_set_at(linkedlist_t *list, int pos, void *item)
+void _linkedlist_add_(struct linkedlist *list, void *item)
 {
-    pos = linkedlist_check_pos(list, pos);
-
-    struct linkedlist_node *node = list->first;
-    for (int i = 0; i < pos; node = node->next, i++)
-        ;
-    node->item = item;
+    _linkedlist_add_back_(list, item);
 }
 
-void linkedlist_add(linkedlist_t *list, void *item)
+void _linkedlist_add_front_(struct linkedlist *list, void *item)
 {
-    linkedlist_add_back(list, item);
-}
-
-void linkedlist_add_front(linkedlist_t *list, void *item)
-{
-    struct linkedlist_node *node = $new(
-        struct linkedlist_node,
-        .item = item,
+    struct linkedlist_node *node = malloc(
+        sizeof(struct linkedlist_node) + list->item_size);
+    *node = (struct linkedlist_node){
         .prev = NULL,
-        .next = list->first);
+        .next = list->first};
+
+    memcpy(node->item, item, list->item_size);
 
     if (list->size == 0)
         list->first = list->last = node;
@@ -1178,13 +1164,15 @@ void linkedlist_add_front(linkedlist_t *list, void *item)
     list->size++;
 }
 
-void linkedlist_add_back(linkedlist_t *list, void *item)
+void _linkedlist_add_back_(struct linkedlist *list, void *item)
 {
-    struct linkedlist_node *node = $new(
-        struct linkedlist_node,
-        .item = item,
+    struct linkedlist_node *node = malloc(
+        sizeof(struct linkedlist_node) + list->item_size);
+    *node = (struct linkedlist_node){
         .prev = list->last,
-        .next = NULL);
+        .next = NULL};
+
+    memcpy(node->item, item, list->item_size);
 
     if (list->size == 0)
         list->first = list->last = node;
@@ -1197,69 +1185,77 @@ void linkedlist_add_back(linkedlist_t *list, void *item)
     list->size++;
 }
 
-void linkedlist_add_at(linkedlist_t *list, int pos, void *item)
+void _linkedlist_add_at_(struct linkedlist *list, int pos, void *item)
 {
-    pos = linkedlist_check_pos(list, pos);
+    pos = collection_ordered_pos(pos, list->size);
 
     struct linkedlist_node *node = list->first;
     for (int i = 0; i < pos; node = node->next, i++)
         ;
 
-    struct linkedlist_node *new_node = $new(
-        struct linkedlist_node,
-        .item = item,
+    struct linkedlist_node *new_node = malloc(
+        sizeof(struct linkedlist_node) + list->item_size);
+    *new_node = (struct linkedlist_node){
         .prev = node->prev,
-        .next = node);
+        .next = node};
+
+    memcpy(new_node->item, item, list->item_size);
 
     node->prev->next = new_node;
     node->prev = new_node;
     list->size++;
 }
 
-void _linkedlist_add_all_(linkedlist_t *list, size_t nitems, void *items[nitems])
+void _linkedlist_add_all_(struct linkedlist *list, size_t n, void *items)
 {
-    for (size_t i = 0; i < nitems; i++)
-        linkedlist_add(list, items[i]);
+    for (size_t i = 0; i < n; i++)
+        _linkedlist_add_(list, (uint8_t *)items + list->item_size * i);
 }
 
-linkedlist_t *linkedlist_concat(linkedlist_t *first, linkedlist_t *second)
+struct linkedlist *_linkedlist_concat_(struct linkedlist *first, struct linkedlist *second)
 {
-    linkedlist_t *new_list = linkedlist_new(0);
+    if (first->item_size != second->item_size)
+        panic("Can't concatenate two lists with different sized items");
 
-    for (linkedlist_ref_t *ref = linkedlist_ref(first);
-         linkedlist_ref_is_valid(ref);
-         linkedlist_ref_next(ref))
+    struct linkedlist *new_list = _linkedlist_new_(
+        (linkedlist_config_t){
+            .item_size = first->item_size,
+            .equal_fn = first->eq_fn});
+
+    for (struct linkedlist_ref *ref = _linkedlist_ref_(first);
+         _linkedlist_ref_is_valid_(ref);
+         _linkedlist_ref_next_(ref))
     {
-        linkedlist_add(new_list, linkedlist_ref_get_item(ref));
+        _linkedlist_add_(new_list, _linkedlist_ref_get_item_(ref));
     }
 
-    for (linkedlist_ref_t *ref = linkedlist_ref(second);
-         linkedlist_ref_is_valid(ref);
-         linkedlist_ref_next(ref))
+    for (struct linkedlist_ref *ref = _linkedlist_ref_(second);
+         _linkedlist_ref_is_valid_(ref);
+         _linkedlist_ref_next_(ref))
     {
-        linkedlist_add(new_list, linkedlist_ref_get_item(ref));
+        _linkedlist_add_(new_list, _linkedlist_ref_get_item_(ref));
     }
 
     return new_list;
 }
 
-size_t linkedlist_pos_of(linkedlist_t *list, void *item)
+size_t _linkedlist_pos_of_(struct linkedlist *list, void *item)
 {
     int i = 0;
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next, i++)
     {
-        if (linkedlist_items_equal(list, node->item, item))
+        if (_linkedlist_items_equal_(list, node->item, item))
             return i;
     }
 
     return -1;
 }
 
-void *linkedlist_remove(linkedlist_t *list, void *item)
+void *_linkedlist_remove_(struct linkedlist *list, void *item)
 {
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
     {
-        if (linkedlist_items_equal(list, node->item, item))
+        if (_linkedlist_items_equal_(list, node->item, item))
         {
             if (node->next != NULL)
                 node->next->prev = node->prev;
@@ -1274,17 +1270,17 @@ void *linkedlist_remove(linkedlist_t *list, void *item)
             void *item = node->item;
             free(node);
 
-            return node->item;
+            return item;
         }
     }
 
-    return NULL;
+    panic("Item is not present in list");
 }
 
-void *linkedlist_remove_front(linkedlist_t *list)
+void *_linkedlist_remove_front_(struct linkedlist *list)
 {
     if (list->size == 0)
-        return NULL;
+        panic("Item is not present in list");
 
     struct linkedlist_node *first = list->first;
 
@@ -1300,10 +1296,10 @@ void *linkedlist_remove_front(linkedlist_t *list)
     return item;
 }
 
-void *linkedlist_remove_back(linkedlist_t *list)
+void *_linkedlist_remove_back_(struct linkedlist *list)
 {
     if (list->size == 0)
-        return NULL;
+        panic("Item is not present in list");
 
     struct linkedlist_node *last = list->last;
 
@@ -1319,9 +1315,9 @@ void *linkedlist_remove_back(linkedlist_t *list)
     return item;
 }
 
-void *linkedlist_remove_at(linkedlist_t *list, int pos)
+void *_linkedlist_remove_at_(struct linkedlist *list, int pos)
 {
-    pos = linkedlist_check_pos(list, pos);
+    pos = collection_ordered_pos(pos, list->size);
 
     struct linkedlist_node *node = list->first;
     for (int i = 0; i < pos; node = node->next, i++)
@@ -1343,7 +1339,7 @@ void *linkedlist_remove_at(linkedlist_t *list, int pos)
     return item;
 }
 
-void *linkedlist_find(linkedlist_t *list, pred_fn_t pred)
+void *_linkedlist_find_(struct linkedlist *list, pred_fn_t pred)
 {
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
     {
@@ -1354,30 +1350,36 @@ void *linkedlist_find(linkedlist_t *list, pred_fn_t pred)
     return NULL;
 }
 
-linkedlist_t *linkedlist_map(linkedlist_t *list, map_fn_t fn)
+struct linkedlist *_linkedlist_map_(struct linkedlist *list, map_fn_t fn)
 {
-    linkedlist_t *new_list = linkedlist_new();
+    struct linkedlist *new_list = _linkedlist_new_(
+        (linkedlist_config_t){
+            .item_size = list->item_size,
+            .equal_fn = list->eq_fn});
 
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
-        linkedlist_add_back(new_list, fn(node->item));
+        _linkedlist_add_back_(new_list, fn(node->item));
 
     return new_list;
 }
 
-linkedlist_t *linkedlist_filter(linkedlist_t *list, pred_fn_t pred)
+struct linkedlist *_linkedlist_filter_(struct linkedlist *list, pred_fn_t pred)
 {
-    linkedlist_t *new_list = linkedlist_new();
+    struct linkedlist *new_list = _linkedlist_new_(
+        (linkedlist_config_t){
+            .item_size = list->item_size,
+            .equal_fn = list->eq_fn});
 
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
     {
         if (pred(node->item))
-            linkedlist_add_back(new_list, node->item);
+            _linkedlist_add_back_(new_list, node->item);
     }
 
     return new_list;
 }
 
-void *linkedlist_reduce(linkedlist_t *list, reduce_fn_t fn)
+void *_linkedlist_reduce_(struct linkedlist *list, reduce_fn_t fn)
 {
     void **work_buffer = calloc(list->size, sizeof(void *));
 
@@ -1394,37 +1396,45 @@ void *linkedlist_reduce(linkedlist_t *list, reduce_fn_t fn)
         }
     }
 
-    void *result = work_buffer[0];
+    void *result = malloc(list->item_size);
+    memcpy(result, work_buffer[0], list->item_size);
     free(work_buffer);
+
     return result;
 }
 
-bool linkedlist_equal(linkedlist_t *list1, linkedlist_t *list2)
+bool _linkedlist_equal_(struct linkedlist *list1, struct linkedlist *list2, eq_config_t config)
 {
+    if (list1->item_size != list2->item_size)
+        panic("Can't compare two lists with different sized items");
+
     if (list1->size != list2->size)
         return false;
 
     struct linkedlist_node *node1 = list1->first;
     struct linkedlist_node *node2 = list2->first;
 
-    for (; node1 != NULL && node2 != NULL; node1 = node1->next, node2 = node2->next)
+    for (struct linkedlist_node *node1 = list1->first, *node2 = list2->first;
+         node1 != NULL && node2 != NULL;
+         node1 = node1->next, node2 = node2->next)
     {
-        if (node1->item != node2->item)
+        if (config.eq_fn != NULL
+                ? !config.eq_fn(node1->item, node2->item)
+                : memcmp(node1->item, node2->item, list1->item_size) != 0)
             return false;
     }
 
     return true;
 }
 
-bool linkedlist_equal_item_eq_fn(linkedlist_t *list1, linkedlist_t *list2, equal_fn_t eq_fn)
+bool _linkedlist_equal_item_eq_fn_(struct linkedlist *list1, struct linkedlist *list2, equal_fn_t eq_fn)
 {
     if (list1->size != list2->size)
         return false;
 
-    struct linkedlist_node *node1 = list1->first;
-    struct linkedlist_node *node2 = list2->first;
-
-    for (; node1 != NULL && node2 != NULL; node1 = node1->next, node2 = node2->next)
+    for (struct linkedlist_node *node1 = list1->first, *node2 = list2->first;
+         node1 != NULL && node2 != NULL;
+         node1 = node1->next, node2 = node2->next)
     {
         if (!eq_fn(node1->item, node2->item))
             return false;
@@ -1433,18 +1443,18 @@ bool linkedlist_equal_item_eq_fn(linkedlist_t *list1, linkedlist_t *list2, equal
     return true;
 }
 
-linkedlist_ref_t *linkedlist_ref(linkedlist_t *list)
+struct linkedlist_ref *_linkedlist_ref_(struct linkedlist *list)
 {
-    return linkedlist_ref_front(list);
+    return _linkedlist_ref_front_(list);
 }
 
-linkedlist_ref_t *linkedlist_ref_front(linkedlist_t *list)
+struct linkedlist_ref *_linkedlist_ref_front_(struct linkedlist *list)
 {
     if (list->size == 0)
         return NULL;
 
     return $new(
-        linkedlist_ref_t,
+        struct linkedlist_ref,
 #if POLYMORPHIC_DS
         .type = DS_TYPE_LINKEDLIST_REF,
 #endif
@@ -1453,13 +1463,13 @@ linkedlist_ref_t *linkedlist_ref_front(linkedlist_t *list)
         .node = list->first);
 }
 
-linkedlist_ref_t *linkedlist_ref_back(linkedlist_t *list)
+struct linkedlist_ref *_linkedlist_ref_back_(struct linkedlist *list)
 {
     if (list->size == 0)
         return NULL;
 
     return $new(
-        linkedlist_ref_t,
+        struct linkedlist_ref,
 #if POLYMORPHIC_DS
         .type = DS_TYPE_LINKEDLIST_REF,
 #endif
@@ -1468,56 +1478,56 @@ linkedlist_ref_t *linkedlist_ref_back(linkedlist_t *list)
         .node = list->last);
 }
 
-void linkedlist_free(linkedlist_t *list)
+void _linkedlist_free_(struct linkedlist *list)
 {
     for (struct linkedlist_node *node = list->first; node != NULL; node = node->next)
         free(node);
     free(list);
 }
 
-void *linkedlist_ref_get_item(linkedlist_ref_t *ref)
+void *_linkedlist_ref_get_item_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
     return ref->node->item;
 }
 
-linkedlist_t *linkedlist_ref_get_list(linkedlist_ref_t *ref)
+struct linkedlist *__linkedlist_ref_get_list__(struct linkedlist_ref *ref)
 {
     return ref->list;
 }
 
-size_t linkedlist_ref_get_pos(linkedlist_ref_t *ref)
+size_t _linkedlist_ref_get_pos_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
     return ref->pos;
 }
 
-bool linkedlist_ref_is_valid(linkedlist_ref_t *ref)
+bool _linkedlist_ref_is_valid_(struct linkedlist_ref *ref)
 {
     return ref->pos != INVALID_REF;
 }
 
-bool linkedlist_ref_has_prev(linkedlist_ref_t *ref)
+bool _linkedlist_ref_has_prev_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
     return ref->pos > 0;
 }
 
-bool linkedlist_ref_has_next(linkedlist_ref_t *ref)
+bool _linkedlist_ref_has_next_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
     return ref->pos < ref->list->size - 1;
 }
 
-void *linkedlist_ref_next(linkedlist_ref_t *ref)
+void *_linkedlist_ref_next_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
-    if (!linkedlist_ref_has_next(ref))
+    if (!_linkedlist_ref_has_next_(ref))
     {
         ref->pos = INVALID_REF;
         return NULL;
@@ -1527,11 +1537,11 @@ void *linkedlist_ref_next(linkedlist_ref_t *ref)
     return ref->node->item;
 }
 
-void *linkedlist_ref_prev(linkedlist_ref_t *ref)
+void *_linkedlist_ref_prev_(struct linkedlist_ref *ref)
 {
-    if (!linkedlist_ref_is_valid(ref))
+    if (!_linkedlist_ref_is_valid_(ref))
         panic("Reference is out of bounds");
-    if (!linkedlist_ref_has_prev(ref))
+    if (!_linkedlist_ref_has_prev_(ref))
     {
         ref->pos = INVALID_REF;
         return NULL;
@@ -1541,7 +1551,7 @@ void *linkedlist_ref_prev(linkedlist_ref_t *ref)
     return ref->node->item;
 }
 
-void linkedlist_ref_free(linkedlist_ref_t *ref)
+void _linkedlist_ref_free_(struct linkedlist_ref *ref)
 {
     free(ref);
 }
@@ -2452,7 +2462,7 @@ struct treemap_ref
     treemap_t *map;
     size_t pos;
     struct rbtree_node *node;
-    linkedlist_t *inorder_history;
+    struct linkedlist *inorder_history;
 };
 
 int treemap_compare_keys(treemap_t *map, void *key1, void *key2)
@@ -2731,12 +2741,17 @@ treemap_ref_t *treemap_ref(treemap_t *map)
         .map = map,
         .pos = 0,
         .node = map->root,
-        .inorder_history = linkedlist_new());
+        .inorder_history = _linkedlist_new_(
+            (linkedlist_config_t){
+                .item_size = sizeof(struct rbtree_node *)}));
 
     /* Initialize this reference at the bottom of the map domain poset. */
 
     for (; ref->node->left != NULL; ref->node = ref->node->left)
-        linkedlist_add_back(ref->inorder_history, ref->node);
+    {
+        struct rbtree_node *node = ref->node;
+        _linkedlist_add_back_(ref->inorder_history, &node);
+    }
 
     return ref;
 }
@@ -2836,10 +2851,11 @@ map_entry_t treemap_ref_next(treemap_ref_t *ref)
          ref->node != NULL;
          ref->node = ref->node->left)
     {
-        linkedlist_add_back(ref->inorder_history, ref->node);
+        struct rbtree_node *node = ref->node;
+        _linkedlist_add_back_(ref->inorder_history, &node);
     }
 
-    ref->node = linkedlist_remove_back(ref->inorder_history);
+    ref->node = _linkedlist_remove_back_(ref->inorder_history);
     ref->pos++;
 
     return (map_entry_t){.key = ref->node->key, .value = ref->node->value};

@@ -238,7 +238,7 @@ void *double_ref(const void *item)
 
 void *double_a_ref(const void *item)
 {
-    struct foo *foo = (struct foo *)item;
+    const struct foo *foo = item;
     return $new(struct foo, foo->a * 2, foo->b, foo->c, foo->z);
 }
 
@@ -292,8 +292,8 @@ void *sum(const void *a, const void *b)
 
 void *foo_sum(const void *a, const void *b)
 {
-    struct foo *fa = a;
-    struct foo *fb = b;
+    const struct foo *fa = a;
+    const struct foo *fb = b;
     return $new(struct foo,
                 fa->a + fb->a,
                 fa->b + fb->b,

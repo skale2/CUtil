@@ -123,29 +123,6 @@ void              collection_ref_free           (collection_ref_t *);           
 #define array_equal(arr1, arr2)      (_array_equal_((arr1), (arr2)))
 #define array_free(arr)              (_array_free_((arr)))
 
-typedef struct array_config
-{
-    size_t item_size;
-    size_t size;
-#if array_ALLOW_EQ_FN_OVERLOAD
-    equal_fn_t equal_fn;
-#endif
-} array_config_t;
-
-void    *_array_new_      (array_config_t);
-size_t   _array_size_     (const void *);
-void     _array_set_all_  (void *, size_t n, const void *);
-void    *_array_concat_   (const void *, const void *);
-size_t   _array_pos_of_   (const void *, const void *);
-size_t   _array_find_pos_ (const void *, pred_fn_t);
-void    *_array_map_      (const void *, map_fn_t);
-void    *_array_filter_   (const void *, pred_fn_t);
-void    *_array_reduce_   (const void *, reduce_fn_t);
-void   **_array_slice_    (const void *, size_t n, long[n]);
-void    *_array_unslice_  (const void **, size_t referenced_size);
-bool     _array_equal_    (const void *, const void *);
-void     _array_free_     (void *);
-
 #define range(_start_, _stop_) \
     (range_step((_start_), (_stop_), 1))
 
@@ -169,6 +146,29 @@ void     _array_free_     (void *);
                                                               \
         arr;                                                  \
     })
+
+typedef struct array_config
+{
+    size_t item_size;
+    size_t size;
+#if array_ALLOW_EQ_FN_OVERLOAD
+    equal_fn_t equal_fn;
+#endif
+} array_config_t;
+
+void    *_array_new_      (array_config_t);
+size_t   _array_size_     (const void *);
+void     _array_set_all_  (void *, size_t n, const void *);
+void    *_array_concat_   (const void *, const void *);
+size_t   _array_pos_of_   (const void *, const void *);
+size_t   _array_find_pos_ (const void *, pred_fn_t);
+void    *_array_map_      (const void *, map_fn_t);
+void    *_array_filter_   (const void *, pred_fn_t);
+void    *_array_reduce_   (const void *, reduce_fn_t);
+void   **_array_slice_    (const void *, size_t n, long[n]);
+void    *_array_unslice_  (const void **, size_t referenced_size);
+bool     _array_equal_    (const void *, const void *);
+void     _array_free_     (void *);
 
 /* ------------------ string -------------------
  */
@@ -286,8 +286,9 @@ void        list_ref_free     (list_ref_t *);
         list;                                         \
     })
 
-#define arraylist_new(type, ...) \
-    ((arraylist_t(type))_arraylist_new_((arraylist_config_t){.item_size = sizeof(type), ##__VA_ARGS__}))
+#define arraylist_new(type, ...)                              \
+    ((arraylist_t(type))_arraylist_new_((arraylist_config_t){ \
+        .item_size = sizeof(type), ##__VA_ARGS__}))
 
 #define arraylist_get_config(list) \
     (_arraylist_get_config_((struct arraylist *)(list)))
@@ -396,8 +397,10 @@ void        list_ref_free     (list_ref_t *);
         res;                                         \
     })
 
-#define arraylist_equal(first, second, ...) \
-    (_arraylist_equal_((struct arraylist *)(first), (struct arraylist *)(second), (eq_config_t){__VA_ARGS__}))
+#define arraylist_equal(first, second, ...)          \
+    (_arraylist_equal_((struct arraylist *)(first),  \
+                       (struct arraylist *)(second), \
+                       (eq_config_t){__VA_ARGS__}))
 
 #define arraylist_free(list) \
     (_arraylist_free_((struct arraylist *)(list)))
@@ -431,9 +434,6 @@ void        list_ref_free     (list_ref_t *);
 
 #define arraylist_ref_free(ref) \
     (_arraylist_ref_free_((struct arraylist_ref *)(ref)))
-
-struct arraylist;
-struct arraylist_ref;
 
 typedef struct arraylist_config
 {
@@ -498,75 +498,217 @@ void                  _arraylist_ref_free_     (struct arraylist_ref *);
 
 #define linkedlist_ALLOW_EQ_FN_OVERLOAD true
 
-#define linkedlist(...)                          \
+#define linkedlist_t(type) type *
+#define linkedlist_ref_t(type) type *
+
+#define linkedlist(type, ...)                            \
+    ({                                                   \
+        linkedlist_t(type) list = linkedlist_new(type);  \
+        linkedlist_add_all(list, ##__VA_ARGS__);         \
+        list;                                            \
+    })
+
+#define linkedlist_new(type, ...)                                \
+    ((linkedlist_t(type))_linkedlist_new_((linkedlist_config_t){ \
+        .item_size = sizeof(type), ##__VA_ARGS__}))
+
+#define linkedlist_get_config(list) \
+    (_linkedlist_get_config_((struct linkedlist *)(list)))
+
+#define linkedlist_is_empty(list) \
+    (_linkedlist_is_empty_((struct linkedlist *)(list)))
+
+#define linkedlist_contains(list, _item_)                          \
+    ({                                                             \
+        typeof((list)) item = (_item_);                            \
+        _linkedlist_contains_((struct linkedlist *)(list), &item); \
+    })
+
+#define linkedlist_size(list) \
+    (_linkedlist_size_((struct linkedlist *)(list)))
+
+#define linkedlist_at(list, _pos_) \
+    (*(typeof((list)))_linkedlist_at_((struct linkedlist *)(list), (_pos_)))
+
+#define linkedlist_get_first(list) \
+    (*(typeof((list)))_linkedlist_get_first_((struct linkedlist *)(list)))
+
+#define linkedlist_get_last(list) \
+    (*(typeof((list)))_linkedlist_get_last_((struct linkedlist *)(list)))
+
+#define linkedlist_add(list, _item_)                          \
+    ({                                                        \
+        typeof(*(list)) item = (_item_);                      \
+        _linkedlist_add_((struct linkedlist *)(list), &item); \
+    })
+
+#define linkedlist_add_front(list, _item_)                          \
+    ({                                                              \
+        typeof(*(list)) item = (_item_);                            \
+        _linkedlist_add_front_((struct linkedlist *)(list), &item); \
+    })
+
+#define linkedlist_add_back(list, _item_)                          \
+    ({                                                             \
+        typeof(*(list)) item = (_item_);                           \
+        _linkedlist_add_back_((struct linkedlist *)(list), &item); \
+    })
+
+#define linkedlist_add_at(list, _pos_, _item_)                            \
+    ({                                                                    \
+        typeof(*(list)) item = (_item_);                                  \
+        _linkedlist_add_at_((struct linkedlist *)(list), (_pos_), &item); \
+    })
+
+#define linkedlist_add_all(list, ...)              \
+    ({                                             \
+        typeof(*(list)) items[] = {__VA_ARGS__};   \
+        _linkedlist_add_all_(                      \
+            (struct linkedlist *)(list),           \
+            sizeof(items) / sizeof(typeof(*list)), \
+            (void *)items);                        \
+    })
+
+#define linkedlist_concat(list1, list2)                     \
+    ({                                                      \
+        $assert_same_type(                                  \
+            (list1), (list2),                               \
+            "can't concatenate arrays of different types"); \
+        (typeof((list1))) _linkedlist_concat_(              \
+            (struct linkedlist *)(list1),                   \
+            (struct linkedlist *)(list2));                  \
+    })
+
+#define linkedlist_pos_of(list, _item_)                          \
+    ({                                                           \
+        typeof(*(list)) item = (_item_);                         \
+        _linkedlist_pos_of_((struct linkedlist *)(list), &item); \
+    })
+
+#define linkedlist_remove(list, _item_)          \
     ({                                           \
-        linkedlist_t *list = linkedlist_new();   \
-        linkedlist_add_all(list, ##__VA_ARGS__); \
-        list;                                    \
+        typeof(*(list)) item = (_item_);         \
+        *(typeof((list)))_linkedlist_remove_(    \
+            (struct linkedlist *)(list), &item); \
     })
 
-#define linkedlist_new(...) \
-    (_linkedlist_new_((linkedlist_config_t){__VA_ARGS__}))
+#define linkedlist_remove_front(list) \
+    (*(typeof((list)))_linkedlist_remove_front_((struct linkedlist *)(list)))
 
-#define linkedlist_add_all(list, ...)       \
-    ({                                      \
-        void *items[] = {__VA_ARGS__};      \
-        _linkedlist_add_all_(               \
-            list,                           \
-            sizeof(items) / sizeof(void *), \
-            items);                         \
+#define linkedlist_remove_back(list) \
+    (*(typeof((list)))_linkedlist_remove_back_((struct linkedlist *)(list)))
+
+#define linkedlist_remove_at(list, _pos_) \
+    (*(typeof((list)))_linkedlist_remove_at_((struct linkedlist *)(list), (_pos_)))
+
+#define linkedlist_find(list, _fn_) \
+    (*(typeof((list)))_linkedlist_find_((struct linkedlist *)(list), (_fn_)))
+
+#define linkedlist_map(list, _fn_) \
+    ((typeof((list)))_linkedlist_map_((struct linkedlist *)(list), (_fn_)))
+
+#define linkedlist_filter(list, _fn_) \
+    ((typeof((list)))_linkedlist_filter_((struct linkedlist *)(list), (_fn_)))
+
+#define linkedlist_reduce(list, _fn_)                 \
+    ({                                                \
+        typeof((list)) res_buf = _linkedlist_reduce_( \
+            (struct linkedlist *)(list), (_fn_));     \
+        typeof(*(list)) res = *res_buf;               \
+        free(res_buf);                                \
+        res;                                          \
     })
 
-typedef struct linkedlist     linkedlist_t;
-typedef struct linkedlist_ref linkedlist_ref_t;
+#define linkedlist_equal(first, second, ...)           \
+    (_linkedlist_equal_((struct linkedlist *)(first),  \
+                        (struct linkedlist *)(second), \
+                        (eq_config_t){__VA_ARGS__}))
+
+#define linkedlist_free(list) \
+    (_linkedlist_free_((struct linkedlist *)(list)))
+
+#define linkedlist_ref(list) \
+    ((typeof((list)))_linkedlist_ref_((struct linkedlist *)(list)))
+
+#define linkedlist_ref_front(list) \
+    ((typeof((list)))_linkedlist_ref_front_((struct linkedlist *)(list)))
+
+#define linkedlist_ref_back(list) \
+    ((typeof((list)))_linkedlist_ref_back_((struct linkedlist *)(list)))
+
+#define linkedlist_ref_get_item(ref) \
+    (*(typeof((ref)))_linkedlist_ref_get_item_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_get_list(ref) \
+    ((typeof((ref)))_linkedlist_ref_get_list_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_get_pos(ref) \
+    (_linkedlist_ref_get_pos_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_is_valid(ref) \
+    (_linkedlist_ref_is_valid_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_has_prev(ref) \
+    (_linkedlist_ref_has_prev_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_has_next(ref) \
+    (_linkedlist_ref_has_next_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_next(ref) \
+    (*(typeof((ref)))_linkedlist_ref_next_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_prev(ref) \
+    (*(typeof((ref)))_linkedlist_ref_prev_((struct linkedlist_ref *)(ref)))
+
+#define linkedlist_ref_free(ref) \
+    (_linkedlist_ref_free_((struct linkedlist_ref *)(ref)))
 
 typedef struct linkedlist_config
 {
+    size_t item_size;
 #if linkedlist_ALLOW_EQ_FN_OVERLOAD
     equal_fn_t equal_fn;
 #endif
 } linkedlist_config_t;
 
-linkedlist_t        *_linkedlist_new_            (linkedlist_config_t);
-linkedlist_config_t  linkedlist_config           (linkedlist_t *);
-bool                 linkedlist_is_empty         (linkedlist_t *);
-bool                 linkedlist_contains         (linkedlist_t *, void *);
-size_t               linkedlist_size             (linkedlist_t *);
-void                *linkedlist_get_at           (linkedlist_t *, int);
-void                *linkedlist_get_first        (linkedlist_t *);
-void                *linkedlist_get_last	     (linkedlist_t *);
-void                 linkedlist_set_at           (linkedlist_t *, int, void *);
-void                 linkedlist_add              (linkedlist_t *, void *);
-void                 linkedlist_add_front        (linkedlist_t *, void *);
-void                 linkedlist_add_back         (linkedlist_t *, void *);
-void                 linkedlist_add_at           (linkedlist_t *, int, void *);
-void                 _linkedlist_add_all_        (linkedlist_t *, size_t n, void *[n]);
-linkedlist_t        *linkedlist_concat           (linkedlist_t *, linkedlist_t *);
-size_t               linkedlist_pos_of           (linkedlist_t *, void *);
-void                *linkedlist_remove           (linkedlist_t *, void *);
-void                *linkedlist_remove_front     (linkedlist_t *);
-void                *linkedlist_remove_back      (linkedlist_t *);
-void                *linkedlist_remove_at        (linkedlist_t *, int);
-void                *linkedlist_find             (linkedlist_t *, pred_fn_t);
-linkedlist_t        *linkedlist_map              (linkedlist_t *, map_fn_t);
-linkedlist_t        *linkedlist_filter           (linkedlist_t *, pred_fn_t);
-void                *linkedlist_reduce           (linkedlist_t *, reduce_fn_t);
-linkedlist_ref_t    *linkedlist_ref_front        (linkedlist_t * list);
-linkedlist_ref_t    *linkedlist_ref_back         (linkedlist_t * list);
-bool                 linkedlist_equal            (linkedlist_t *, linkedlist_t *);
-bool                 linkedlist_equal_item_eq_fn (linkedlist_t *, linkedlist_t *, equal_fn_t);
-void                 linkedlist_free             (linkedlist_t *);
+struct linkedlist     *_linkedlist_new_              (linkedlist_config_t);
+linkedlist_config_t    _linkedlist_get_config_       (struct linkedlist *);
+bool                   _linkedlist_is_empty_         (struct linkedlist *);
+bool                   _linkedlist_contains_         (struct linkedlist *, void *);
+size_t                 _linkedlist_size_             (struct linkedlist *);
+void                  *_linkedlist_at_               (struct linkedlist *, int);
+void                  *_linkedlist_get_first_        (struct linkedlist *);
+void                  *_linkedlist_get_last_	     (struct linkedlist *);
+void                   _linkedlist_add_              (struct linkedlist *, void *);
+void                   _linkedlist_add_front_        (struct linkedlist *, void *);
+void                   _linkedlist_add_back_         (struct linkedlist *, void *);
+void                   _linkedlist_add_at_           (struct linkedlist *, int, void *);
+void                   _linkedlist_add_all_          (struct linkedlist *, size_t n, void *);
+struct linkedlist     *_linkedlist_concat_           (struct linkedlist *, struct linkedlist *);
+size_t                 _linkedlist_pos_of_           (struct linkedlist *, void *);
+void                  *_linkedlist_remove_           (struct linkedlist *, void *);
+void                  *_linkedlist_remove_front_     (struct linkedlist *);
+void                  *_linkedlist_remove_back_      (struct linkedlist *);
+void                  *_linkedlist_remove_at_        (struct linkedlist *, int);
+void                  *_linkedlist_find_             (struct linkedlist *, pred_fn_t);
+struct linkedlist     *_linkedlist_map_              (struct linkedlist *, map_fn_t);
+struct linkedlist     *_linkedlist_filter_           (struct linkedlist *, pred_fn_t);
+void                  *_linkedlist_reduce_           (struct linkedlist *, reduce_fn_t);
+bool                   _linkedlist_equal_            (struct linkedlist *, struct linkedlist *, eq_config_t config);
+void                   _linkedlist_free_             (struct linkedlist *);
 
-linkedlist_ref_t    *linkedlist_ref              (linkedlist_t *);
-void                *linkedlist_ref_get_item     (linkedlist_ref_t *);
-linkedlist_t        *linkedlist_ref_get_list     (linkedlist_ref_t *);
-size_t               linkedlist_ref_get_pos      (linkedlist_ref_t *);
-bool                 linkedlist_ref_is_valid     (linkedlist_ref_t *);
-bool                 linkedlist_ref_has_prev     (linkedlist_ref_t *);
-bool                 linkedlist_ref_has_next     (linkedlist_ref_t *);
-void                *linkedlist_ref_next         (linkedlist_ref_t *);
-void                *linkedlist_ref_prev         (linkedlist_ref_t *);
-void                 linkedlist_ref_free         (linkedlist_ref_t *);
+struct linkedlist_ref *_linkedlist_ref_              (struct linkedlist *);
+struct linkedlist_ref *_linkedlist_ref_front_        (struct linkedlist *list);
+struct linkedlist_ref *_linkedlist_ref_back_         (struct linkedlist *list);
+void                  *_linkedlist_ref_get_item_     (struct linkedlist_ref *);
+struct linkedlist     *_linkedlist_ref_get_list_     (struct linkedlist_ref *);
+size_t                 _linkedlist_ref_get_pos_      (struct linkedlist_ref *);
+bool                   _linkedlist_ref_is_valid_     (struct linkedlist_ref *);
+bool                   _linkedlist_ref_has_prev_     (struct linkedlist_ref *);
+bool                   _linkedlist_ref_has_next_     (struct linkedlist_ref *);
+void                  *_linkedlist_ref_next_         (struct linkedlist_ref *);
+void                  *_linkedlist_ref_prev_         (struct linkedlist_ref *);
+void                   _linkedlist_ref_free_         (struct linkedlist_ref *);
 
 
 /* ------------------- map -------------------

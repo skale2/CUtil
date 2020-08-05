@@ -126,7 +126,7 @@ struct print_config
         }                                                                      \
     })
 
-void debug_mem_setup(void);
+void  debug_mem_setup        (void);
 void  debug_mem_reset        (void);
 void *debug_mem_malloc       (size_t size, char *file, size_t line);
 void *debug_mem_calloc       (size_t nitems, size_t size, char *file, size_t line);
