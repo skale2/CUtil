@@ -10,16 +10,16 @@ A collection of C utilities for high level, generic, and type-safe programming i
 
 [WIP]
 - **data_struct.h**: implementations of generic, type-safe collections in native-C. Includes the following types:
-    *collection_t (type class)*  
-    array_t  
-    string_t  
-    *list_t (type class)*  
-    arraylist_t  
-    linkedlist_t  
-    *map_t (type class)*  
-    hashmap_t  
-    treemap_t  
-    *set_t (type class)*  
-    hashset_t  
-    treeset_t  
+    - *collection_t (type class)*  
+    - array_t  
+    - string_t  
+    - *list_t (type class)*  
+    - arraylist_t  
+    - linkedlist_t  
+    - *map_t (type class)*  
+    - hashmap_t  
+    - treemap_t  
+    - *set_t (type class)*  
+    - hashset_t  
+    - treeset_t  
 - **arg.h**: a utility to create command line interfaces and specify positional arguments, variadic arguments, and options. Confirms to the GNU CLI standards.
