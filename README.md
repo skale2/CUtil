@@ -32,6 +32,8 @@ This library relies on a few compiler-specific extensions, including variadic ma
 ## Q&A
 
 1. *Should I use this library in my new/existing project?*  
-    No, since this library is still a work in progress and needs more testing and features before it's a viable dependency.
+    No, because this library is still a work in progress and needs more testing and features before it's a viable dependency.
 2. *Should I use this library after it's been fully developed and tested?*  
-    No, because even I don't trust anything I code. Also C++ has been out for literally decades.
+    No, because I'm not good at coding. Also C++ has been out for literal decades.
+3. *Should I try it out in a project I don't care about?*  
+    Knock yourself out.
