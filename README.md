@@ -1,8 +1,6 @@
 # CUtil
 
-A collection of C utilities for high level, generic, and type-safe programming in C. This library is aimed at developers comfortable working in highly-abstracted C, rather than use-cases like those required by embedded system developers, who I'm sure would rather spend their time hardcoding a 4KB array because it's "better for the cache policy".
-
-This library relies on a few compiler-specific extensions, including variadic macros, designated initializers, statement expresssions, and the `typeof` operator. For now, it's recommended that compilation is only done on GCC or Clang.
+A collection of C utilities for high level, generic, and type-safe programming in C. This library relies on a few compiler-specific extensions, including variadic macros, designated initializers, statement expresssions, and the `typeof` operator. For now, it's recommended that compilation is only done on GCC or Clang. This library is aimed at developers comfortable working in highly-abstracted C, rather than, for example, embedded system developers, who I'm sure would much rather spend their time hardcoding a 4KB array because it's "better for the cache policy".
 
 ## Features
 
