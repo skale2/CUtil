@@ -6,7 +6,7 @@
 
 hashmap_t *map;
 
-DEFAULT_RESOURCE_HANDLER_ALL
+testing_DEFAULT_RESOURCE_HANDLER_ALL
 
 void before_each()
 {
@@ -153,7 +153,7 @@ void test_keys()
 void test_values()
 {
 	hashmap_set_all(map, {_(0), _(0)}, {_(1), _(-1)}, {_(2), _(-2)});
-	arraylist_t *values = hashmap_values(map);
+	arraylist_t(int) values = hashmap_values(map);
 	assert_true(arraylist_contains(values, _(0)));
 	assert_true(arraylist_contains(values, _(-1)));
 	assert_true(arraylist_contains(values, _(-2)));

@@ -12,7 +12,7 @@ struct foo
 array_t(int) arr;
 array_t(struct foo) arr2;
 
-DEFAULT_RESOURCE_HANDLER_ALL
+testing_DEFAULT_RESOURCE_HANDLER_ALL
 
 void before_each()
 {

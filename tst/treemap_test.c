@@ -6,7 +6,7 @@
 
 treemap_t *map;
 
-DEFAULT_RESOURCE_HANDLER_ALL
+testing_DEFAULT_RESOURCE_HANDLER_ALL
 
 void before_each()
 {
@@ -153,7 +153,7 @@ void test_keys()
 void test_values()
 {
 	treemap_set_all(map, {_(0), _(0)}, {_(1), _(-1)}, {_(2), _(-2)});
-	arraylist_t *values = treemap_values(map);
+	arraylist_t(int) values = treemap_values(map);
 	assert_true(arraylist_contains(values, _(0)));
 	assert_true(arraylist_contains(values, _(-1)));
 	assert_true(arraylist_contains(values, _(-2)));
@@ -244,6 +244,6 @@ int main(int argc, char *argv[])
 		TEST(test_keys),
 		TEST(test_values),
 		TEST(test_equal),
-		TEST(test_iter_cmp_fn),
+		TEST(test_sort_cmp_fn),
 		TEST(test_ref_forward_iter));
 }

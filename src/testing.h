@@ -22,18 +22,18 @@ void after_each(void);
 void before_all(void);
 void after_all(void);
 
-#define DEFAULT_RESOURCE_HANDLERS \
-    void before_each(void) {}     \
-    void after_each(void) {}      \
-    void before_all(void) {}      \
-    void after_all(void) {}    
+#define testing_DEFAULT_RESOURCE_HANDLERS \
+    void before_each(void) {}             \
+    void after_each(void) {}              \
+    void before_all(void) {}              \
+    void after_all(void) {}
 
-#define DEFAULT_RESOURCE_HANDLER_EACH \
-    void before_each(void) {}         \
+#define testing_DEFAULT_RESOURCE_HANDLER_EACH \
+    void before_each(void) {}                 \
     void after_each(void) {}
 
-#define DEFAULT_RESOURCE_HANDLER_ALL \
-    void before_all(void) {}         \
+#define testing_DEFAULT_RESOURCE_HANDLER_ALL \
+    void before_all(void) {}                 \
     void after_all(void) {}
 
 /* ------------------------------------------------------------- *
@@ -41,9 +41,10 @@ void after_all(void);
  * ------------------------------------------------------------- */
 
 #if testing_ENABLE_ALIASES
-#define assert(item)                                             (testing_assert((item)))
 #define assert_equal(expected, given)                            (testing_assert_equal((expected), (given)))
 #define assert_not_equal(expected, given)                        (testing_assert_not_equal((expected), (given)))
+#define assert_ptr_equal(expected, given)                        (testing_assert_ptr_equal((expected), (given)))
+#define assert_ptr_not_equal(expected, given)                    (testing_assert_ptr_not_equal((expected), (given)))
 #define assert_int_equal(expected, given)                        (testing_assert_int_equal((expected), (given)))
 #define assert_int_not_equal(expected, given)                    (testing_assert_int_not_equal((expected), (given)))
 #define assert_uint_equal(expected, given)                       (testing_assert_uint_equal((expected), (given)))

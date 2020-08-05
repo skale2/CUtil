@@ -7,45 +7,81 @@
 /* ------------- macro helpers ------------- */
 
 #define DEBUG_MACRO_STRINGIFY(macro) \
-	(#macro)
+    (#macro)
 
 #define DEBUG_MACRO_PRINT(macro) \
-	(printf("%s\n", DEBUG_MACRO_STRINGIFY(macro)))
+    (printf("%s\n", DEBUG_MACRO_STRINGIFY(macro)))
 
 /* ------------- print helpers ------------ */
 
-#define print(s, ...)           (printf(s, ##__VA_ARGS__));
-#define println(s, ...)         ({ printf((s), ##__VA_ARGS__); printf("\n"); })
-#define print_int(v)            (printf("%d", (v)))
-#define println_int(v)          (printf("%d\n", (v)))
-#define print_uint(v)           (printf("%u", (v)))
-#define println_uint(v)         (printf("%u\n", (v)))
-#define print_char(v)           (printf("%c", (v)))
-#define println_char(v)         (printf("%c\n", (v)))
-#define print_float(v)          (printf("%f", (v)))
-#define println_float(v)        (printf("%f\n", (v)))
-#define print_float_scinot(v)   (printf("%e", (v)))
-#define println_float_scinot(v) (printf("%e\n", (v)))
-#define print_long(v)           (printf("%ld", (v)))
-#define println_long(v)         (printf("%ld\n", (v)))
-#define print_ulong(v)          (printf("%llu", (v)))
-#define println_ulong(v)        (printf("%llu\n", (v)))
-#define print_double(v)         (printf("%Lf", (v)))
-#define println_double(v)       (printf("%Lf\n", (v)))
-#define println_int_hex(v)      (printf("%x\n", (v)))
-#define print_int_octal(v)      (printf("%o", (v)))
-#define println_int_octal(v)    (printf("%o\n", (v)))
-#define print_bool(v)           (printf("%s", v ? "true" : "false"))
-#define println_bool(v)         (printf("%s\n", v ? "true" : "false"))
-#define print_ref(v)            (printf("%p", (v)))
-#define println_ref(v)          (printf("%p\n", (v)))
-#define print_size(v)           (printf("%zu", (v)))
-#define println_size(v)         (printf("%zu\n", (v)))
-#define print_str(v)            (printf("%s", (v)))
-#define println_str(v)          (printf("%s\n", (v)))
-#define print_nothing(v)        (printf("%n", (v)))
-#define println_nothing(v)      (printf("%n\n", (v)))
-#define print_member(v, m)      (printf("%p", (v)[offsetof(typeof((v)), m)]))
+#define FORMAT_SPEC_INT "%d"
+#define FORMAT_SPEC_UINT "%u"
+#define FORMAT_SPEC_CHAR "%c"
+#define FORMAT_SPEC_FLOAT "%f"
+#define FORMAT_SPEC_FLOAT_SCINOT "%e"
+#define FORMAT_SPEC_LONG "%ld"
+#define FORMAT_SPEC_ULONG "%llu"
+#define FORMAT_SPEC_DOUBLE "%lf"
+#define FORMAT_SPEC_DOUBLE_SCINOT "%e"
+#define FORMAT_SPEC_HEX "%x"
+#define FORMAT_SPEC_OCTAL "%o"
+#define FORMAT_SPEC_PTR "%p"
+#define FORMAT_SPEC_SIZE "%zu"
+#define FORMAT_SPEC_STR "%s"
+
+struct print_config 
+{
+    char *label;
+    char *delim;
+    char *end;
+};
+
+#define print(v, ...)                                                                             \
+    ({                                                                                            \
+        struct print_config config = (struct print_config){__VA_ARGS__};                          \
+                                                                                                  \
+        printf("%s%s",                                                                            \
+               config.label == NULL ? "" : config.label,                                          \
+               config.label == NULL ? "" : (config.delim == NULL ? ": " : config.delim));         \
+                                                                                                  \
+        printf(__builtin_choose_expr(__builtin_types_compatible_p(typeof(v), char),               \
+                   FORMAT_SPEC_CHAR,                                                              \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), short) ||            \
+                                     __builtin_types_compatible_p(typeof(v), int),                \
+                   FORMAT_SPEC_INT,                                                               \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), unsigned short) ||   \
+                                     __builtin_types_compatible_p(typeof(v), unsigned int),       \
+                   FORMAT_SPEC_UINT,                                                              \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), long) ||             \
+                                     __builtin_types_compatible_p(typeof(v), long long),          \
+                   FORMAT_SPEC_LONG,                                                              \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), unsigned long) ||    \
+                                     __builtin_types_compatible_p(typeof(v), unsigned long long), \
+                   FORMAT_SPEC_ULONG,                                                             \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), float),              \
+                   FORMAT_SPEC_FLOAT,                                                             \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), double),             \
+                   FORMAT_SPEC_DOUBLE,                                                            \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), size_t),             \
+                   FORMAT_SPEC_SIZE,                                                              \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), char []) ||          \
+                                     __builtin_types_compatible_p(typeof(v), char *),             \
+                   FORMAT_SPEC_STR,                                                               \
+               __builtin_choose_expr(__builtin_types_compatible_p(typeof(v), void *),             \
+                   FORMAT_SPEC_PTR,                                                               \
+                   "\tpanic   @ " __FILE__ " (line " $string(__LINE__) ")\n"                      \
+                   "\t        ! unsupported data type for generic print\n"                        \
+               )))))))))), (v));                                                                  \
+                                                                                                  \
+        printf("%s", config.end == NULL ? "" : config.end);                                       \
+    })
+
+#define println(v, ...)          \
+    ({                           \
+        print(v, ##__VA_ARGS__); \
+        print("\n");             \
+    })
+
 
 /* ------------ output piping ------------- */
 
@@ -76,19 +112,19 @@
 #define debug_mem_dump_str(start, nitems)           (debug_mem_dump((start), (nitems), char *, "%s"))
 
 #define debug_mem_dump(start, nitems, item_t, fmt_spec)                        \
-	({                                                                         \
-		printf("\nAddress        | Value"                                      \
-			   "\n---------------+---------------------------------------\n"); \
+    ({                                                                         \
+        printf("\nAddress        | Value"                                      \
+               "\n---------------+---------------------------------------\n"); \
                                                                                \
-		for (uint8_t *ptr = (uint8_t *)start;                                  \
-			 ptr < (uint8_t *)start + nitems * sizeof(item_t);                 \
-			 ptr += sizeof(item_t))                                            \
-		{                                                                      \
-			printf("%p | ", ptr);                                              \
-			printf(fmt_spec, *(item_t *)ptr);                                  \
-			printf("\n");                                                      \
-		}                                                                      \
-	})
+        for (uint8_t *ptr = (uint8_t *)start;                                  \
+             ptr < (uint8_t *)start + nitems * sizeof(item_t);                 \
+             ptr += sizeof(item_t))                                            \
+        {                                                                      \
+            printf("%p | ", ptr);                                              \
+            printf(fmt_spec, *(item_t *)ptr);                                  \
+            printf("\n");                                                      \
+        }                                                                      \
+    })
 
 void debug_mem_setup(void);
 void  debug_mem_reset        (void);

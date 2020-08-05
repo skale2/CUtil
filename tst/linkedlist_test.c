@@ -6,7 +6,7 @@
 
 linkedlist_t *list;
 
-DEFAULT_RESOURCE_HANDLER_ALL
+testing_DEFAULT_RESOURCE_HANDLER_ALL
 
 void before_each()
 {

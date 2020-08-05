@@ -1,47 +1,49 @@
 #pragma once
 
 #include <string.h>
+#include <assert.h>
 #include <stdbool.h>
 
 #define cm ,
-
 #define $literal(x) x
+#define $_string(x) #x
+#define $string(x) $_string(x)
 
 #define _(o) ((void *)(long)(o))
 
 #define $(type, ...) \
-	((type){__VA_ARGS__})
+    ((type){__VA_ARGS__})
 
 #define $box(value)                                         \
-	({                                                      \
-		typeof(value) *ptr = malloc(sizeof(typeof(value))); \
-		*ptr = (value);                                     \
-		ptr;                                                \
-	})
+    ({                                                      \
+        typeof(value) *ptr = malloc(sizeof(typeof(value))); \
+        *ptr = (value);                                     \
+        ptr;                                                \
+    })
 
 #define $new(type, ...)                            \
-	({                                             \
-		type *v = (type *)calloc(1, sizeof(type)); \
-		*v = (type){__VA_ARGS__};                  \
-		v;                                         \
-	})
+    ({                                             \
+        type *v = (type *)calloc(1, sizeof(type)); \
+        *v = (type){__VA_ARGS__};                  \
+        v;                                         \
+    })
 
-#define $assert_same_type(a, b, msg) \
-	_Static_assert(__builtin_types_compatible_p(typeof(a), typeof(b)), msg)
+#define $assert_same_type(/* unexecuted */ a, /* unexecuted */ b, msg) \
+    static_assert(__builtin_types_compatible_p(typeof(a), typeof(b)), msg)
 
 #define max(a, b)               \
-	({                          \
-		__typeof__(a) _a = (a); \
-		__typeof__(b) _b = (b); \
-		_a > _b ? _a : _b;      \
-	})
+    ({                          \
+        __typeof__(a) _a = (a); \
+        __typeof__(b) _b = (b); \
+        _a > _b ? _a : _b;      \
+    })
 
 #define min(a, b)               \
-	({                          \
-		__typeof__(a) _a = (a); \
-		__typeof__(b) _b = (b); \
-		_a < _b ? _a : _b;      \
-	})
+    ({                          \
+        __typeof__(a) _a = (a); \
+        __typeof__(b) _b = (b); \
+        _a < _b ? _a : _b;      \
+    })
 
 typedef bool    (*equal_fn_t)    (const void *, const void *);
 typedef int     (*compare_fn_t)  (const void *, const void *);
@@ -52,11 +54,11 @@ typedef bool    (*bipred_fn_t)   (const void *, const void *);
 typedef void   *(*reduce_fn_t)   (const void *, const void *);
 
 #define hash(...)                                      \
-	({                                                 \
-		const void *items[] = {__VA_ARGS__};           \
-		_hash_(sizeof(items) / sizeof(void *), items); \
-	})
-size_t _hash_(size_t n, const void *[n]);
+    ({                                                 \
+        const void *items[] = {__VA_ARGS__};           \
+        _hash_(sizeof(items) / sizeof(void *), items); \
+    })
+size_t _hash_        (size_t n, const void *[n]);
 
 size_t identity_hash (const void *);
 bool   streq         (const void *, const void *);
